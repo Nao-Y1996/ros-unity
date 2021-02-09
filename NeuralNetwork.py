@@ -6,16 +6,8 @@ import csv
 import math
 import os
 from load_data import LoadData
-
-wb_width = 0.1
-eta = 0.01
-epoch = 500
-batch_size = 8
-interval = 200
-
-data = LoadData()
-data.load()
-_DIR_HERE =  data.dir_here
+import torch
+from sklearn.model_selection import train_test_split
 
 # -- 各層の継承元 --
 class BaseLayer:
@@ -114,12 +106,31 @@ def str2int(path):
         data = np.array([row for row in reader]).astype(np.int64)
     return data
 
+def s(_data):
+    print(type(_data),np.shape(_data))
+wb_width = 0.1
+eta = 0.01
+epoch = 500
+batch_size = 8
+interval = 200
 
-clusta_Num=5
+load_data = LoadData()
+load_data.load()
+
+data = load_data.data
+s(data)
+one_hot = torch.nn.functional.one_hot(torch.tensor(load_data.target), num_classes=load_data.cluster_num).numpy()
+s(one_hot)
+input_train, input_valid, correct_train, correct_valid = train_test_split(data, one_hot, shuffle=True)
+n_train = input_train.shape[0] #訓練用データのサンプル数
+n_test = input_valid.shape[0]    #テスト用データのサンプル数
+_DIR_HERE =  load_data.dir_here
+
+
 #NNの定義
-n_in = np.shape(data.input_train)[1]
+n_in = np.shape(input_train)[1]
 n_mid = n_in * 4
-n_out = clusta_Num
+n_out = load_data.cluster_num
 
 
 
@@ -136,14 +147,14 @@ test_error_x = []
 test_error_y = []
 
 # -- 学習と経過の記録 --
-n_batch = data.n_train // batch_size  # 1エポックあたりのバッチ数
+n_batch = n_train // batch_size  # 1エポックあたりのバッチ数
 for i in range(epoch):
 
     # -- 誤差の計測 --  
-    fp(data.input_train, False)
-    error_train = get_error(data.correct_train, data.n_train)
-    fp(data.input_test, False)
-    error_test = get_error(data.correct_test, data.n_test)
+    fp(input_train, False)
+    error_train = get_error(correct_train, n_train)
+    fp(input_valid, False)
+    error_test = get_error(correct_valid, n_test)
     
     # -- 誤差の記録 -- 
     test_error_x.append(i)
@@ -158,15 +169,15 @@ for i in range(epoch):
               "Error_test:" + str(error_test))
 
     # -- 学習 -- 
-    index_random = np.arange(data.n_train)
+    index_random = np.arange(n_train)
     np.random.shuffle(index_random)  # インデックスをシャッフルする
     for j in range(n_batch):
         
         # ミニバッチを取り出す
         mb_index = index_random[j*batch_size : (j+1)*batch_size]
-        x = data.input_train[mb_index, :]
-        t = data.correct_train[mb_index, :]
-        
+        x = input_train[mb_index, :]
+        t = correct_train[mb_index, :]
+            
         # 順伝播と逆伝播
         fp(x, True)
         bp(t)
@@ -181,7 +192,7 @@ plt.plot(test_error_x, test_error_y, label="Test")
 plt.legend()
 plt.xlabel("Epochs")
 plt.ylabel("Error")
-
+plt.show()
 
 
 #学習した重みを保存
@@ -205,14 +216,14 @@ save2csv(b_ol, 'w', ol.b)
 
 
 #正解率の計算
-fp(data.input_train,False)
-count_train = np.sum(np.argmax(ol.y,axis=1) == np.argmax(data.correct_train, axis=1))
+fp(input_train,False)
+count_train = np.sum(np.argmax(ol.y,axis=1) == np.argmax(correct_train, axis=1))
 
-fp(data.input_test,False)
-count_test = np.sum(np.argmax(ol.y,axis=1) == np.argmax(data.correct_test, axis=1))
+fp(input_valid,False)
+count_test = np.sum(np.argmax(ol.y,axis=1) == np.argmax(correct_valid, axis=1))
 
-print('学習データでの正解数---{}/{}'.format(data.count_train,data.n_train))
-print('テストデータでの正解数---{}/{}'.format(count_test,data.n_test))
+print('学習データでの正解数---{}/{}'.format(count_train,n_train))
+print('テストデータでの正解数---{}/{}'.format(count_test,n_test))
 
-print("Accuracy Train:" + str(float(count_train)/data.n_train*100) + "%",
-      "Accuracy Test:" + str(float(count_test)/data.n_test*100) + "%")
+print("Accuracy Train:" + str(float(count_train)/n_train*100) + "%",
+      "Accuracy Test:" + str(float(count_test)/n_test*100) + "%")

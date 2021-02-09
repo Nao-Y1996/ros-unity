@@ -15,12 +15,12 @@ class LoadData:
         self.data = None
         self.target = None
         self.n_in = None
-        self.n_out = None
+        self.cluster_num = None
 
     def str2float(self, path):
         with open(path) as f:
             reader = csv.reader(f)
-            data = np.array([row for row in reader]).astype(np.float64)
+            data = np.array([row for row in reader]).astype(np.int64)
         return data
 
     def load(self):
@@ -38,11 +38,11 @@ class LoadData:
 
         n_data = len(self.target)
         self.n_in = np.shape(self.data)[1]
-        self.n_out = len(set(self.target))
+        self.cluster_num = len(set(self.target))
 
 
         print('データ数：' + str(n_data))
-        print('クラスタ数：' + str(self.n_out))
+        print('クラスタ数：' + str(self.cluster_num))
         print('data：' + str(np.shape(self.data)))
         print('target：' + str(np.shape(self.target)))
         print('--------------データを読み込みました-----------------')

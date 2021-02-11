@@ -32,17 +32,17 @@ class SituationDetector():
                         23, 26, 29, 32, 35, 38, 41, 44])
         # 現在時刻のOpenPoseの骨格情報
         pose_now = np.array(pose_now, dtype=np.int64)
-        save2csv('csv/pose.csv', mode='a', pose_now)
+        save2csv('openpose_data_csv/pose.csv', mode='a', pose_now)
         
         # 各jointにおける、1時刻前との距離 joint_diff
         self.joint_now = np.reshape(pose_now, (self.joint_num,2))
         for i in range(self.joint_num):
             self.joint_diff[i] = np.linalg.norm(self.joint_now[i] - self.joint_old[i])
-        save2csv('csv/joint_diff.csv', mode='a', self.joint_diff)
+        save2csv('openpose_data_csv/joint_diff.csv', mode='a', self.joint_diff)
 
         # ユークリッド距離
         EuclideanDistance =np.linalg.norm(pose_now - self.pose_old)
-        save2csv('csv/EuclideanDistance.csv', mode='a', [EuclideanDistance])
+        save2csv('openpose_data_csv/EuclideanDistance.csv', mode='a', [EuclideanDistance])
 
         self.joint_old = self.joint_now
         self.pose_old = pose_now
@@ -60,11 +60,11 @@ if __name__ == '__main__':
     situation_detector = SituationDetector()
     dir_here =  os.path.dirname(os.path.abspath(__file__))
 
-    f = open(dir_here + '/csv/diff.csv', 'w')
+    f = open(dir_here + '/openpose_data_csv/diff.csv', 'w')
     f.close
-    f = open(dir_here + '/csv/pose.csv', 'w')
+    f = open(dir_here + '/csopenpose_data_csvv/pose.csv', 'w')
     f.close
-    f = open(dir_here + '/csv/EuclideanDistance.csv', 'w')
+    f = open(dir_here + '/openpose_data_csv/EuclideanDistance.csv', 'w')
     f.close
     while not rospy.is_shutdown():
 

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
@@ -8,6 +7,7 @@ import os
 from load_data import LoadData
 import torch
 from sklearn.model_selection import train_test_split
+import json
 
 # -- 各層の継承元 --
 class BaseLayer:
@@ -71,7 +71,6 @@ class Dropout:
     def backward(self, grad_y):
         self.grad_x = grad_y * self.dropout  # 無効なニューロンでは逆伝播しない
 
-
 # -- 順伝播 --
 def fp(x, is_train):
     ml_1.forward(x)
@@ -98,7 +97,6 @@ def uppdate_wb():
 def get_error(t, batch_size):
     return -np.sum(t * np.log(ol.y + 1e-7)) / batch_size  # 交差エントロピー誤差
 
-
 # csvを読んで要素をintにする
 def str2int(path):
     with open(path) as f:
@@ -108,31 +106,42 @@ def str2int(path):
 
 def s(_data):
     print(type(_data),np.shape(_data))
-wb_width = 0.1
-eta = 0.01
-epoch = 500
-batch_size = 8
-interval = 200
 
+# ==========データの読み込み===========
 load_data = LoadData()
 load_data.load()
 
 data = load_data.data
-s(data)
 one_hot = torch.nn.functional.one_hot(torch.tensor(load_data.target), num_classes=load_data.cluster_num).numpy()
-s(one_hot)
 input_train, input_valid, correct_train, correct_valid = train_test_split(data, one_hot, shuffle=True)
 n_train = input_train.shape[0] #訓練用データのサンプル数
 n_test = input_valid.shape[0]    #テスト用データのサンプル数
 _DIR_HERE =  load_data.dir_here
+#==================================
 
 
-#NNの定義
+
+#=============NNの定義==============
 n_in = np.shape(input_train)[1]
 n_mid = n_in * 4
 n_out = load_data.cluster_num
+wb_width = 0.1
+eta = 0.01
 
+epoch = 20
+batch_size = 8
+interval = 200
 
+dic_nn = {
+    'n_in':n_in,
+    'n_mid':n_mid,
+    'n_out':n_out,
+    'wb_width':wb_width,
+    'eta':eta
+}
+with open('NN_model/model.json', 'w') as f:
+    json.dump(dic_nn, f, indent=2, ensure_ascii=False)
+#==================================
 
 # -- 各層の初期化 --
 ml_1 = MiddleLayer(n_in, n_mid)
@@ -192,26 +201,44 @@ plt.plot(test_error_x, test_error_y, label="Test")
 plt.legend()
 plt.xlabel("Epochs")
 plt.ylabel("Error")
-plt.show()
+plt.savefig("NN_model/Error.png")
+# plt.show()
 
 
-#学習した重みを保存
+#==========学習した重みを保存==============
+# dic_wb = {
+#     'w_ml_1':ml_1.w,
+#     'b_ml_1':ml_1.b,
+#     'w_ml_2':ml_2.w,
+#     'b_ml_2':ml_2.b,
+#     'w_ol':ol.w,
+#     'b_ol':ol.b
+# }
+# with open('NN_wb.json', 'w') as f:
+#     json.dump(dic_wb, f, indent=2, ensure_ascii=False)
+
 def save2csv(file_path, mode, data):
     with open(file_path, mode) as csvfile:
-            writer = csv.writer(csvfile, lineterminator='\n')
+        writer = csv.writer(csvfile)
+        if len(np.shape(data)) == 2: # 2次元配列のとき
+            writer.writerows(data)
+        else:
             writer.writerow(data)
-w_ml_1 = _DIR_HERE + '/csv/NN-result/w_ml_1.csv'
-b_ml_1 = _DIR_HERE + '/csv/NN-result/b_ml_1.csv'
-w_ml_2 = _DIR_HERE + '/csv/NN-result/w_ml_2.csv'
-b_ml_2 = _DIR_HERE + '/csv/NN-result/b_ml_2.csv'
-w_ol = _DIR_HERE + '/csv/NN-result/w_ol.csv'
-b_ol = _DIR_HERE + '/csv/NN-result/b_ol.csv'        
-save2csv(w_ml_1, 'w', ml_1.w)
-save2csv(b_ml_1, 'w', ml_1.b)
-save2csv(w_ml_2, 'w', ml_2.w)
-save2csv(b_ml_2, 'w', ml_2.b)
-save2csv(w_ol, 'w', ol.w)
-save2csv(b_ol, 'w', ol.b)
+
+w_ml_1 = _DIR_HERE + '/NN_model/wb/w_ml_1.csv'
+b_ml_1 = _DIR_HERE + '/NN_model/wb/b_ml_1.csv'
+w_ml_2 = _DIR_HERE + '/NN_model/wb/w_ml_2.csv'
+b_ml_2 = _DIR_HERE + '/NN_model/wb/b_ml_2.csv'
+w_ol = _DIR_HERE + '/NN_model/wb/w_ol.csv'
+b_ol = _DIR_HERE + '/NN_model/wb/b_ol.csv'
+# print(ml_1.w.tolist()[:3])
+save2csv(w_ml_1, 'w', ml_1.w.tolist())
+save2csv(b_ml_1, 'w', ml_1.b.tolist())
+save2csv(w_ml_2, 'w', ml_2.w.tolist())
+save2csv(b_ml_2, 'w', ml_2.b.tolist())
+save2csv(w_ol, 'w', ol.w.tolist())
+save2csv(b_ol, 'w', ol.b.tolist())
+#==================================
 
 
 

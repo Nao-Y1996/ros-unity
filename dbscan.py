@@ -38,7 +38,7 @@ def cluster_plots(data, colors='gray', title1='Dataset 1'):  # グラフ作成
     ax1.scatter(data[:, 0], data[:, 1], s=8, lw=0, c=colors)
     # plt.xlim(0,1920)
     # plt.ylim(0,1080)
-    fig.savefig('figure/test.png')
+    fig.savefig('openpose_data_csv/dbscan_result.png')
 
 
 # 塊のデータセット
@@ -47,7 +47,7 @@ def cluster_plots(data, colors='gray', title1='Dataset 1'):  # グラフ作成
 # 月のデータセット
 # data = datasets.make_moons(n_samples=1000, noise=.05)[0]
 
-with open('csv/pose.csv') as f:
+with open('openpose_data_csv/pose.csv') as f:
     reader = csv.reader(f)
     l = [row for row in reader]
 # data = l
@@ -60,7 +60,7 @@ print('データ形状：' + str(np.shape(data)) )
 dbscan = DBSCAN(data, eps=110, min_samples=60)
 dbscan.calc()
 # print(np.reshape(dbscan.dbscan_data, (-1,1)))
-with open('csv/correct_data.csv', 'w') as f:
+with open('openpose_data_csv/correct_data.csv', 'w') as f:
     writer = csv.writer(f)
     writer.writerow(dbscan.dbscan_data)
 print("クラスタ：" + str(dbscan.cluster_num) +  "ノイズ：" + str(dbscan.noise_num) )

@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
-#===============================NNの定義=======================================
-Classification_Num = 3
-n_in = 8
-n_mid = 50
-n_out = Classification_Num
-wb_width = 0.1
-eta = 0.01
-
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+import math
+import os
+from load_data import LoadData
+import torch
+from sklearn.model_selection import train_test_split
+import json
+import rospy
+import time
 # -- 各層の継承元 --
 class BaseLayer:
     def __init__(self, n_upper, n):
@@ -69,72 +72,61 @@ class Dropout:
     def backward(self, grad_y):
         self.grad_x = grad_y * self.dropout  # 無効なニューロンでは逆伝播しない
 
-# -- 順伝播 --
-def fp(x, is_train):
-    ml_1.forward(x)
-    dp_1.forward(ml_1.y, is_train)
-    ml_2.forward(dp_1.y)
-    dp_2.forward(ml_2.y, is_train)
-    ol.forward(dp_2.y)
-
-#===================================================================================
-
-
-# csvを読んで要素をintにする
-def str2int(path):
-    with open(path) as f:
-        reader = csv.reader(f)
-        data = np.array([row for row in reader]).astype(np.int64)
-    return data
-
-
 
 
 if __name__ == '__main__':
     rospy.init_node('NN')
+    #=============NNの定義==============
+    with open('NN_model/model.json') as f:
+        df = json.load(f)
+    n_in = df['n_in']
+    n_mid = df['n_mid']
+    n_out = df['n_out']
+    wb_width = df['wb_width']
+    eta = df['eta']
+
     # -- 各層の初期化 --
     ml_1 = MiddleLayer(n_in, n_mid)
-    dp_1 = Dropout(0.5)
+    # dp_1 = Dropout(0.5)
     ml_2 = MiddleLayer(n_mid, n_mid)
-    dp_2 = Dropout(0.5)
+    # dp_2 = Dropout(0.5)
     ol = OutputLayer(n_mid, n_out)
 
-
-    #学習済みの重みを読み込む
-    w_ml_1 = dir_here + '/csv/NN-result/w_ml_1.csv'
-    b_ml_1 = dir_here + '/csv/NN-result/b_ml_1.csv'
-    w_ml_2 = dir_here + '/csv/NN-result/w_ml_2.csv'
-    b_ml_2 = dir_here + '/csv/NN-result/b_ml_2.csv'
-    w_ol = dir_here + '/csv/NN-result/w_ol.csv'
-    b_ol = dir_here + '/csv/NN-result/b_ol.csv'
-        
-    ml_1.w = str2int(w_ml_1)[0]
-    ml_1.b = str2int(b_ml_1)[0]
-    ml_2.w = str2int(w_ml_2)[0]
-    ml_2.b = str2int(b_ml_2)[0]
-    ol.w = str2int(w_ol)[0]
-    ol.b = str2int(b_ol)[0]
-
-    fname = '/home/naoyamada/catkin_ws3/src/hsr_handing/script/csv/rt-pose.csv'
-    pub = rospy.Publisher('pose_topic', pose_info, queue_size=10)
-    while not rospy.is_shutdown():
+    # -- 順伝播 --
+    def fp(x, is_train):
+        ml_1.forward(x)
+        # dp_1.forward(ml_1.y, is_train)
+        # ml_2.forward(dp_1.y)
+        # dp_2.forward(ml_2.y, is_train)
+        # ol.forward(dp_2.y)
+        ml_2.forward(ml_1.y)
+        ol.forward(ml_2.y)
+    #==================================
 
 
-	    fp(input_data, is_train=False)
-	    index_result = np.argmax(ol.y,axis=1)
-	    probability = round(float(ol.y[0][index_result])*100,3)
-	    pose_identification_number=3
-	    if index_result==0 and probability>=50:
-	        print('座り---{}%'.format(probability))
-	        pose_identification_number = index_result
-	    if index_result==1 and probability>=50:
-	        print('立ち---{}%'.format(probability))
-	        pose_identification_number = index_result
-	    if index_result==2 and probability>=50:
-	        print('あぐら---{}%'.format(probability))  
-	        pose_identification_number = index_result 
-	    if probability<50 :
-	        pose_identification_number = 3
-
-        pose_identification_number = 0
-        pub.publish(pose_identification_number)
+    #===========学習済みの重みを読み込む============
+    # csvを読んで要素をfloatにする
+    def str2float(path):
+        with open(path) as f:
+            reader = csv.reader(f)
+            data = np.array([row for row in reader]).astype(np.float64)
+        return data
+    base_dir = 'NN_model/wb/'
+    ml_1.b = str2float(base_dir + 'b_ml_1.csv')
+    ml_1.w = str2float(base_dir + 'w_ml_1.csv')
+    ml_2.w = str2float(base_dir + 'w_ml_2.csv')
+    ml_2.b = str2float(base_dir + 'b_ml_2.csv')
+    ol.w = str2float(base_dir + 'w_ol.csv')
+    ol.b = str2float(base_dir + 'b_ol.csv')
+    
+    load_data = LoadData()
+    load_data.load()
+    data = load_data.data
+    # while not rospy.is_shutdown():
+    for input_data in data:
+        fp(input_data, is_train=False)
+        # print(ol.y[0])
+        time.sleep(1)
+        # index_result = np.argmax(ol.y,axis=1)
+        probability = ol.y[0]*100
+        print(probability)

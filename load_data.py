@@ -20,21 +20,26 @@ class LoadData:
     def str2float(self, path):
         with open(path) as f:
             reader = csv.reader(f)
-            data = np.array([row for row in reader]).astype(np.int64)
+            data = np.array([row for row in reader]).astype(np.float32)
         return data
 
     def load(self):
         # 正解データを作成
-        path = self.dir_here + '/openpose_data_csv/correct_data.csv'
+        path = self.dir_here + '/webcamera_pose_data/correct_data.csv'
         data = self.str2float(path)[0]
         # ノイズデータの除去
         noize_indexes = np.array([index for index,num in enumerate(data) if num==-1 ])
         self.target = np.delete(data, noize_indexes)
 
         # 学習データの作成
-        path = self.dir_here + '/openpose_data_csv/pose.csv'
+        path = self.dir_here + '/webcamera_pose_data/pose.csv'
         data = self.str2float(path)
+        # ノイズの削除
         self.data = np.delete(data, noize_indexes, 0)
+        # 信頼値の削除
+        max_body_parts = 18
+        confidence_score_indexes = list(range(2, 3*max_body_parts, 3))
+        self.data = np.delete(self.data, confidence_score_indexes, 1)
 
         n_data = len(self.target)
         self.n_in = np.shape(self.data)[1]
@@ -44,6 +49,6 @@ class LoadData:
         print('データ数：' + str(n_data))
         print('クラスタ数：' + str(self.cluster_num))
         print('data：' + str(np.shape(self.data)))
-        print('target：' + str(np.shape(self.target)))
+        print('target：' + str(np.shape(self.target)),self.target)
         print('--------------データを読み込みました-----------------')
 #---------------------------------------------------------------------------------

@@ -1,15 +1,17 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import rospy
 import numpy as np
-import matplotlib.pyplot as plt
 import csv
 import math
 import os
 from load_data import LoadData
-import torch
-from sklearn.model_selection import train_test_split
+# import torch
+# from sklearn.model_selection import train_test_split
 import json
-import rospy
 import time
+from std_msgs.msg import Float32MultiArray
+
 # -- 各層の継承元 --
 class BaseLayer:
     def __init__(self, n_upper, n):
@@ -55,29 +57,13 @@ class OutputLayer(BaseLayer):
         self.grad_b = np.sum(delta, axis=0)
         
         self.grad_x = np.dot(delta, self.w.T) 
-        
-# -- ドロップアプト --
-class Dropout:
-    def __init__(self, dropout_ratio):
-        self.dropout_ratio = dropout_ratio  # ニューロンを無効にする確率
-
-    def forward(self, x, is_train):  # is_train: 学習時はTrue
-        if is_train:
-            rand = np.random.rand(*x.shape)  # 入力と同じ形状の乱数の行列
-            self.dropout = np.where(rand > self.dropout_ratio, 1, 0)  # 1:有効 0:無効
-            self.y = x * self.dropout  # ニューロンをランダムに無効化
-        else:
-            self.y = (1-self.dropout_ratio)*x  # テスト時は出力を下げる
-        
-    def backward(self, grad_y):
-        self.grad_x = grad_y * self.dropout  # 無効なニューロンでは逆伝播しない
-
 
 
 if __name__ == '__main__':
-    rospy.init_node('NN')
+    dir_here =  os.path.dirname(os.path.abspath(__file__))
+    rospy.init_node('detection')
     #=============NNの定義==============
-    with open('NN_model/model.json') as f:
+    with open(dir_here + '/NN_model/model.json') as f:
         df = json.load(f)
     n_in = df['n_in']
     n_mid = df['n_mid']
@@ -87,18 +73,12 @@ if __name__ == '__main__':
 
     # -- 各層の初期化 --
     ml_1 = MiddleLayer(n_in, n_mid)
-    # dp_1 = Dropout(0.5)
     ml_2 = MiddleLayer(n_mid, n_mid)
-    # dp_2 = Dropout(0.5)
     ol = OutputLayer(n_mid, n_out)
 
     # -- 順伝播 --
     def fp(x, is_train):
         ml_1.forward(x)
-        # dp_1.forward(ml_1.y, is_train)
-        # ml_2.forward(dp_1.y)
-        # dp_2.forward(ml_2.y, is_train)
-        # ol.forward(dp_2.y)
         ml_2.forward(ml_1.y)
         ol.forward(ml_2.y)
     #==================================
@@ -111,22 +91,29 @@ if __name__ == '__main__':
             reader = csv.reader(f)
             data = np.array([row for row in reader]).astype(np.float64)
         return data
-    base_dir = 'NN_model/wb/'
+    base_dir = dir_here + '/NN_model/wb/'
     ml_1.b = str2float(base_dir + 'b_ml_1.csv')
     ml_1.w = str2float(base_dir + 'w_ml_1.csv')
     ml_2.w = str2float(base_dir + 'w_ml_2.csv')
     ml_2.b = str2float(base_dir + 'b_ml_2.csv')
     ol.w = str2float(base_dir + 'w_ol.csv')
     ol.b = str2float(base_dir + 'b_ol.csv')
-    
-    load_data = LoadData()
-    load_data.load()
-    data = load_data.data
-    # while not rospy.is_shutdown():
-    for input_data in data:
-        fp(input_data, is_train=False)
-        # print(ol.y[0])
+    #============================================
+
+
+    situation_pub = rospy.Publisher('situation', Float32MultiArray, queue_size=10)
+    situataions = Float32MultiArray()
+    def detect(message):
+        pose_now = np.delete(message.data, [2, 5, 8, 11, 14, 17, 20,
+                        23, 26, 29, 32, 35, 38, 41, 44])
+        fp(pose_now, is_train=False)
+        situataions.data = (ol.y[0]*100).tolist()
+        situation_pub.publish(situataions)
+
+
+
+    while not rospy.is_shutdown():
+        
+        sub = rospy.Subscriber('/OpenPose', Float32MultiArray, detect)
         time.sleep(1)
-        # index_result = np.argmax(ol.y,axis=1)
-        probability = ol.y[0]*100
-        print(probability)
+        # situation_pub.publish(param.situataions)

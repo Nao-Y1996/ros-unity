@@ -110,9 +110,9 @@ def s(_data):
 # ==========データの読み込み===========
 load_data = LoadData()
 load_data.load()
-
+target = torch.tensor(load_data.target)
 data = load_data.data
-one_hot = torch.nn.functional.one_hot(torch.tensor(load_data.target), num_classes=load_data.cluster_num).numpy()
+one_hot = torch.nn.functional.one_hot(target.to(torch.int64), num_classes=load_data.cluster_num).numpy()
 input_train, input_valid, correct_train, correct_valid = train_test_split(data, one_hot, shuffle=True)
 n_train = input_train.shape[0] #訓練用データのサンプル数
 n_test = input_valid.shape[0]    #テスト用データのサンプル数
@@ -128,9 +128,9 @@ n_out = load_data.cluster_num
 wb_width = 0.1
 eta = 0.01
 
-epoch = 20
+epoch = 200
 batch_size = 8
-interval = 200
+interval = 50
 
 dic_nn = {
     'n_in':n_in,

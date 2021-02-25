@@ -35,32 +35,29 @@ def cluster_plots(data, colors='gray', title1='Dataset 1'):  # グラフ作成
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     ax1.set_title(title1, fontsize=14)
-    ax1.scatter(data[:, 0], data[:, 1], s=8, lw=0, c=colors)
+    body_part = 1
+    body_part_index = body_part * 2
+    ax1.scatter(data[:, body_part_index], data[:, body_part_index+1], s=8, lw=0, c=colors)
     # plt.xlim(0,1920)
     # plt.ylim(0,1080)
-    fig.savefig('openpose_data_csv/dbscan_result.png')
+    fig.savefig('webcamera_pose_data/dbscan_result.png')
 
-
-# 塊のデータセット
-# dataset1 = datasets.make_blobs(
-#     n_samples=1000, random_state=10, centers=6, cluster_std=1.2)[0]
-# 月のデータセット
-# data = datasets.make_moons(n_samples=1000, noise=.05)[0]
-
-with open('openpose_data_csv/pose.csv') as f:
+# -----------OpoenPoseデータの読み込み-----------
+with open('webcamera_pose_data/pose_par_second.csv') as f:
     reader = csv.reader(f)
     l = [row for row in reader]
-# data = l
-# print(data)
 data = np.array([[int(float(v)) for v in row] for row in l])
-# data = np.delete(data, [2, 5, 8, 11, 14, 17, 20,
-#                         23, 26, 29, 32, 35, 38, 41, 44], 1)
 
+# 信頼値の削除
+max_body_parts = 18
+confidence_score_indexes = list(range(2, 3*max_body_parts, 3))
+data = np.delete(data, confidence_score_indexes, 1)
+                         
 print('データ形状：' + str(np.shape(data)) )
-dbscan = DBSCAN(data, eps=110, min_samples=60)
+dbscan = DBSCAN(data, eps=500, min_samples=120)
 dbscan.calc()
 # print(np.reshape(dbscan.dbscan_data, (-1,1)))
-with open('openpose_data_csv/correct_data.csv', 'w') as f:
+with open('webcamera_pose_data/correct_data.csv', 'w') as f:
     writer = csv.writer(f)
     writer.writerow(dbscan.dbscan_data)
 print("クラスタ：" + str(dbscan.cluster_num) +  "ノイズ：" + str(dbscan.noise_num) )

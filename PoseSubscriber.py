@@ -28,8 +28,12 @@ class SituationDetector():
 
     def detect(self, message):
         # 信頼値の部分を削除
-        pose_now = np.delete(message.data, [2, 5, 8, 11, 14, 17, 20,
-                        23, 26, 29, 32, 35, 38, 41, 44])
+        max_body_parts = 15
+        confidence_score_indexes = list(range(2, 3*max_body_parts, 3))
+        pose_now = np.delete(message.data, confidence_score_indexes)
+        # pose_now = np.delete(message.data, [2, 5, 8, 11, 14, 17, 20,
+        #                 23, 26, 29, 32, 35, 38, 41, 44])
+        
         # 現在時刻のOpenPoseの骨格情報
         pose_now = np.array(pose_now, dtype=np.int64)
         save2csv('openpose_data_csv/pose.csv', mode='a', pose_now)
@@ -62,7 +66,7 @@ if __name__ == '__main__':
 
     f = open(dir_here + '/openpose_data_csv/diff.csv', 'w')
     f.close
-    f = open(dir_here + '/csopenpose_data_csvv/pose.csv', 'w')
+    f = open(dir_here + '/openpose_data_csv/pose.csv', 'w')
     f.close
     f = open(dir_here + '/openpose_data_csv/EuclideanDistance.csv', 'w')
     f.close

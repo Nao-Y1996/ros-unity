@@ -10,8 +10,9 @@ import os
 
 #---------------------------データの前処理------------------------------
 class LoadData:
-    def __init__(self):
-        self.dir_here = os.path.dirname(os.path.abspath(__file__))
+    def __init__(self, path):
+        # self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.base_dir = path
         self.data = None
         self.target = None
         self.n_in = None
@@ -25,14 +26,14 @@ class LoadData:
 
     def load(self):
         # 正解データを作成
-        path = self.dir_here + '/webcamera_pose_data/correct_data.csv'
+        path = self.base_dir + '/correct_data.csv'
         data = self.str2float(path)[0]
         # ノイズデータの除去
         noize_indexes = np.array([index for index,num in enumerate(data) if num==-1 ])
         self.target = np.delete(data, noize_indexes)
 
         # 学習データの作成
-        path = self.dir_here + '/webcamera_pose_data/pose.csv'
+        path = self.base_dir + '/pose_par_second.csv'
         data = self.str2float(path)
         # ノイズの削除
         self.data = np.delete(data, noize_indexes, 0)
@@ -49,6 +50,6 @@ class LoadData:
         print('データ数：' + str(n_data))
         print('クラスタ数：' + str(self.cluster_num))
         print('data：' + str(np.shape(self.data)))
-        print('target：' + str(np.shape(self.target)),self.target)
+        print('target：' + str(np.shape(self.target)))
         print('--------------データを読み込みました-----------------')
 #---------------------------------------------------------------------------------

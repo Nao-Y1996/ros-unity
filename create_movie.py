@@ -1,13 +1,14 @@
 import sys
 import cv2
-
-images_path = 'webcamera_pose_data'
+# dir_name = str(input('enter directory name : '))
+images_path = 'webcamera_pose_data/' + '2021-02-27-22-13/'
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 video = cv2.VideoWriter(images_path+'/pose.mp4',fourcc, 20.0, (640, 480))
 
 if not video.isOpened():
     print("can't be opened")
     sys.exit()
+print('start createing movie ... ')
 i = 0
 while True:
     try:
@@ -17,7 +18,8 @@ while True:
             print("can't read")
             break
         video.write(img)
-        print(i)
+        if i%100==0:
+            print('image: -- %d' % i )
         i += 1
     except:
         break

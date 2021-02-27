@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from argparse import ArgumentParser
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
@@ -104,119 +105,6 @@ def str2int(path):
         data = np.array([row for row in reader]).astype(np.int64)
     return data
 
-def s(_data):
-    print(type(_data),np.shape(_data))
-
-# ==========データの読み込み===========
-load_data = LoadData()
-load_data.load()
-target = torch.tensor(load_data.target)
-data = load_data.data
-one_hot = torch.nn.functional.one_hot(target.to(torch.int64), num_classes=load_data.cluster_num).numpy()
-input_train, input_valid, correct_train, correct_valid = train_test_split(data, one_hot, shuffle=True)
-n_train = input_train.shape[0] #訓練用データのサンプル数
-n_test = input_valid.shape[0]    #テスト用データのサンプル数
-_DIR_HERE =  load_data.dir_here
-#==================================
-
-
-
-#=============NNの定義==============
-n_in = np.shape(input_train)[1]
-n_mid = n_in * 4
-n_out = load_data.cluster_num
-wb_width = 0.1
-eta = 0.01
-
-epoch = 200
-batch_size = 8
-interval = 50
-
-dic_nn = {
-    'n_in':n_in,
-    'n_mid':n_mid,
-    'n_out':n_out,
-    'wb_width':wb_width,
-    'eta':eta
-}
-with open('NN_model/model.json', 'w') as f:
-    json.dump(dic_nn, f, indent=2, ensure_ascii=False)
-#==================================
-
-# -- 各層の初期化 --
-ml_1 = MiddleLayer(n_in, n_mid)
-dp_1 = Dropout(0.5)
-ml_2 = MiddleLayer(n_mid, n_mid)
-dp_2 = Dropout(0.5)
-ol = OutputLayer(n_mid, n_out)
-# -- 誤差の記録用 --
-train_error_x = []
-train_error_y = []
-test_error_x = []
-test_error_y = []
-
-# -- 学習と経過の記録 --
-n_batch = n_train // batch_size  # 1エポックあたりのバッチ数
-for i in range(epoch):
-
-    # -- 誤差の計測 --  
-    fp(input_train, False)
-    error_train = get_error(correct_train, n_train)
-    fp(input_valid, False)
-    error_test = get_error(correct_valid, n_test)
-    
-    # -- 誤差の記録 -- 
-    test_error_x.append(i)
-    test_error_y.append(error_test) 
-    train_error_x.append(i)
-    train_error_y.append(error_train) 
-    
-    # -- 経過の表示 -- 
-    if i%interval == 0:
-        print("Epoch:" + str(i) + "/" + str(epoch),
-              "Error_train:" + str(error_train),
-              "Error_test:" + str(error_test))
-
-    # -- 学習 -- 
-    index_random = np.arange(n_train)
-    np.random.shuffle(index_random)  # インデックスをシャッフルする
-    for j in range(n_batch):
-        
-        # ミニバッチを取り出す
-        mb_index = index_random[j*batch_size : (j+1)*batch_size]
-        x = input_train[mb_index, :]
-        t = correct_train[mb_index, :]
-            
-        # 順伝播と逆伝播
-        fp(x, True)
-        bp(t)
-        
-        # 重みとバイアスの更新
-        uppdate_wb() 
-
-
-#誤差の記録をグラフ表示
-plt.plot(train_error_x, train_error_y, label="Train")
-plt.plot(test_error_x, test_error_y, label="Test")
-plt.legend()
-plt.xlabel("Epochs")
-plt.ylabel("Error")
-plt.savefig("NN_model/Error.png")
-# plt.show()
-
-
-#==========学習した重みを保存==============
-# dic_wb = {
-#     'w_ml_1':ml_1.w,
-#     'b_ml_1':ml_1.b,
-#     'w_ml_2':ml_2.w,
-#     'b_ml_2':ml_2.b,
-#     'w_ol':ol.w,
-#     'b_ol':ol.b
-# }
-# with open('NN_wb.json', 'w') as f:
-#     json.dump(dic_wb, f, indent=2, ensure_ascii=False)
-
 def save2csv(file_path, mode, data):
     with open(file_path, mode) as csvfile:
         writer = csv.writer(csvfile)
@@ -225,32 +113,150 @@ def save2csv(file_path, mode, data):
         else:
             writer.writerow(data)
 
-w_ml_1 = _DIR_HERE + '/NN_model/wb/w_ml_1.csv'
-b_ml_1 = _DIR_HERE + '/NN_model/wb/b_ml_1.csv'
-w_ml_2 = _DIR_HERE + '/NN_model/wb/w_ml_2.csv'
-b_ml_2 = _DIR_HERE + '/NN_model/wb/b_ml_2.csv'
-w_ol = _DIR_HERE + '/NN_model/wb/w_ol.csv'
-b_ol = _DIR_HERE + '/NN_model/wb/b_ol.csv'
-# print(ml_1.w.tolist()[:3])
-save2csv(w_ml_1, 'w', ml_1.w.tolist())
-save2csv(b_ml_1, 'w', ml_1.b.tolist())
-save2csv(w_ml_2, 'w', ml_2.w.tolist())
-save2csv(b_ml_2, 'w', ml_2.b.tolist())
-save2csv(w_ol, 'w', ol.w.tolist())
-save2csv(b_ol, 'w', ol.b.tolist())
-#==================================
+def s(_data):
+    print(type(_data),np.shape(_data))
+
+if __name__=='__main__':
+    parser = ArgumentParser()
+    parser.add_argument('--dir', type=str, default="",
+                        help='directory of the experiment')
+    args = parser.parse_args()
+
+    # ==========データの読み込み===========
+    load_data = LoadData(args.dir)
+    load_data.load()
+    target = torch.tensor(load_data.target)
+    data = load_data.data
+    one_hot = torch.nn.functional.one_hot(target.to(torch.int64), num_classes=load_data.cluster_num).numpy()
+    input_train, input_valid, correct_train, correct_valid = train_test_split(data, one_hot, shuffle=True)
+    n_train = input_train.shape[0] #訓練用データのサンプル数
+    n_test = input_valid.shape[0]    #テスト用データのサンプル数
+    _DIR_HERE =  os.path.dirname(os.path.abspath(__file__))
+    #==================================
+
+    #=============NNの定義==============
+    n_in = np.shape(input_train)[1]
+    n_mid = n_in * 4
+    n_out = load_data.cluster_num
+    wb_width = 0.1
+    eta = 0.01
+
+    epoch = 200
+    batch_size = 100
+    interval = 50
+
+    dic_nn = {
+        'n_in':n_in,
+        'n_mid':n_mid,
+        'n_out':n_out,
+        'wb_width':wb_width,
+        'eta':eta
+    }
+    with open('NN_model/model.json', 'w') as f:
+        json.dump(dic_nn, f, indent=2, ensure_ascii=False)
+    #==================================
+
+    # -- 各層の初期化 --
+    ml_1 = MiddleLayer(n_in, n_mid)
+    dp_1 = Dropout(0.5)
+    ml_2 = MiddleLayer(n_mid, n_mid)
+    dp_2 = Dropout(0.5)
+    ol = OutputLayer(n_mid, n_out)
+    # -- 誤差の記録用 --
+    train_error_x = []
+    train_error_y = []
+    test_error_x = []
+    test_error_y = []
+
+    # -- 学習と経過の記録 --
+    n_batch = n_train // batch_size  # 1エポックあたりのバッチ数
+    for i in range(epoch):
+
+        # -- 誤差の計測 --  
+        fp(input_train, False)
+        error_train = get_error(correct_train, n_train)
+        fp(input_valid, False)
+        error_test = get_error(correct_valid, n_test)
+        
+        # -- 誤差の記録 -- 
+        test_error_x.append(i)
+        test_error_y.append(error_test) 
+        train_error_x.append(i)
+        train_error_y.append(error_train) 
+        
+        # -- 経過の表示 -- 
+        if i%interval == 0:
+            print("Epoch:" + str(i) + "/" + str(epoch),
+                "Error_train:" + str(error_train),
+                "Error_test:" + str(error_test))
+
+        # -- 学習 -- 
+        index_random = np.arange(n_train)
+        np.random.shuffle(index_random)  # インデックスをシャッフルする
+        for j in range(n_batch):
+            
+            # ミニバッチを取り出す
+            mb_index = index_random[j*batch_size : (j+1)*batch_size]
+            x = input_train[mb_index, :]
+            t = correct_train[mb_index, :]
+                
+            # 順伝播と逆伝播
+            fp(x, True)
+            bp(t)
+            
+            # 重みとバイアスの更新
+            uppdate_wb() 
+
+
+    #誤差の記録をグラフ表示
+    plt.plot(train_error_x, train_error_y, label="Train")
+    plt.plot(test_error_x, test_error_y, label="Test")
+    plt.legend()
+    plt.xlabel("Epochs")
+    plt.ylabel("Error")
+    plt.savefig("NN_model/Error.png")
+    # plt.show()
+
+
+    #==========学習した重みを保存==============
+    # dic_wb = {
+    #     'w_ml_1':ml_1.w,
+    #     'b_ml_1':ml_1.b,
+    #     'w_ml_2':ml_2.w,
+    #     'b_ml_2':ml_2.b,
+    #     'w_ol':ol.w,
+    #     'b_ol':ol.b
+    # }
+    # with open('NN_wb.json', 'w') as f:
+    #     json.dump(dic_wb, f, indent=2, ensure_ascii=False)
+
+
+    w_ml_1 = _DIR_HERE + '/NN_model/wb/w_ml_1.csv'
+    b_ml_1 = _DIR_HERE + '/NN_model/wb/b_ml_1.csv'
+    w_ml_2 = _DIR_HERE + '/NN_model/wb/w_ml_2.csv'
+    b_ml_2 = _DIR_HERE + '/NN_model/wb/b_ml_2.csv'
+    w_ol = _DIR_HERE + '/NN_model/wb/w_ol.csv'
+    b_ol = _DIR_HERE + '/NN_model/wb/b_ol.csv'
+    # print(ml_1.w.tolist()[:3])
+    save2csv(w_ml_1, 'w', ml_1.w.tolist())
+    save2csv(b_ml_1, 'w', ml_1.b.tolist())
+    save2csv(w_ml_2, 'w', ml_2.w.tolist())
+    save2csv(b_ml_2, 'w', ml_2.b.tolist())
+    save2csv(w_ol, 'w', ol.w.tolist())
+    save2csv(b_ol, 'w', ol.b.tolist())
+    #==================================
 
 
 
-#正解率の計算
-fp(input_train,False)
-count_train = np.sum(np.argmax(ol.y,axis=1) == np.argmax(correct_train, axis=1))
+    #正解率の計算
+    fp(input_train,False)
+    count_train = np.sum(np.argmax(ol.y,axis=1) == np.argmax(correct_train, axis=1))
 
-fp(input_valid,False)
-count_test = np.sum(np.argmax(ol.y,axis=1) == np.argmax(correct_valid, axis=1))
+    fp(input_valid,False)
+    count_test = np.sum(np.argmax(ol.y,axis=1) == np.argmax(correct_valid, axis=1))
 
-print('学習データでの正解数---{}/{}'.format(count_train,n_train))
-print('テストデータでの正解数---{}/{}'.format(count_test,n_test))
+    print('学習データでの正解数---{}/{}'.format(count_train,n_train))
+    print('テストデータでの正解数---{}/{}'.format(count_test,n_test))
 
-print("Accuracy Train:" + str(float(count_train)/n_train*100) + "%",
-      "Accuracy Test:" + str(float(count_test)/n_test*100) + "%")
+    print("Accuracy Train:" + str(float(count_train)/n_train*100) + "%",
+        "Accuracy Test:" + str(float(count_test)/n_test*100) + "%")
